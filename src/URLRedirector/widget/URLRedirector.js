@@ -1,149 +1,151 @@
-/*jslint white: true nomen: true plusplus: true */
-/*global mx, mxui, mendix, dojo, require, console, define, module */
-/**
+/*jslint white:true, nomen: true, plusplus: true */
+/*global mx, mxui, define, require, browser, devel, console, document, jQuery, window */
+/*mendix */
+/*
+    HelpText
+    ========================
 
-	URLRedirector
+    @file      : URLRedirector.js
+    @version   : 1.2
+    @author    : Gerhard Richard Edens
+    @date      : Tue, 03 Jun 2015 11:19:00 GMT
+    @copyright : Mendix bv
+    @license   : Apache 2
 
+    Documentation
+    ========================
+    Describe your widget here.
 */
 
-(function() {
-    'use strict';
+// Required module list. Remove unnecessary modules, you can always get them back from the boilerplate.
+define([
+    "dojo/_base/declare", "mxui/widget/_WidgetBase", "dijit/_TemplatedMixin",
+    "mxui/dom", "dojo/dom", "dojo/query", "dojo/dom-prop", "dojo/dom-geometry", "dojo/dom-class", "dojo/dom-style", "dojo/dom-construct", "dojo/_base/array", "dojo/_base/lang", "dojo/text", "dojo/html", "dojo/_base/html", "dojo/_base/event", "dojo/_base/window",
+    "dojo/text!HelpText/widget/template/HelpText.html"
+], function (declare, _WidgetBase, _TemplatedMixin, dom, dojoDom, domQuery, domProp, domGeom, domClass, domStyle, domConstruct, dojoArray, lang, text, html, page, event, win, widgetTemplate) {
+    "use strict";
 
-    // test
-    require([
+    // Declare widget"s prototype.
+    return declare("URLRedirector.widget.URLRedirector", [_WidgetBase, _TemplatedMixin], {
 
-        'mxui/widget/_WidgetBase', 'dijit/_Widget', 'dijit/_TemplatedMixin',
-        'mxui/dom', 'dojo/dom', 'dojo/query', 'dojo/dom-prop', 'dojo/dom-geometry', 'dojo/dom-class', 'dojo/dom-style', 'dojo/on', 'dojo/_base/lang', 'dojo/_base/declare', 'dojo/text'
+        //IMPLEMENTATION
+        domNode: null,
+        topic : "CustomWidget/HelpText",
+        imgNode : null,
+        handle : null,
+        helpNode : null,
+        helpvisible: false,
+        windowEvt : null,
 
-    ], function (_WidgetBase, _Widget, _Templated, domMx, dom, domQuery, domProp, domGeom, domClass, domStyle, on, lang, declare, text) {
+        // _TemplatedMixin will create our dom node using this HTML template.
+        templateString: widgetTemplate,
 
-        // Declare widget.
-        return declare('URLRedirector.widget.URLRedirector', [ _WidgetBase, _Widget ], {
+        // Internal variables. Non-primitives created in the prototype are shared between all widget instances.
+        _handle: null,
+        _handles: null,
+        _contextObj: null,
+        _alertDiv: null,
 
-            /**
-             * Internal variables.
-             * ======================
-             */
-            _wgtNode: null,
-            _contextGuid: null,
-            _contextObj: null,
-            _handle: null,
+        // dojo.declare.constructor is called to construct the widget instance. Implement to initialize non-primitive properties.
+        constructor: function () {
+            this._handles = [];
+        },
 
+        // dijit._WidgetBase.postCreate is called after constructing the widget. Implement to do extra setup work.
+        postCreate: function () {
+            console.log(this.id + ".postCreate");
+            this._updateRendering();
+            this._setupEvents();
+        },
 
-            /**
-             * What to do when data is loaded?
-             */
+        // mxui.widget._WidgetBase.update is called when context is changed or initialized. Implement to re-render and / or fetch data.
+        update: function (obj, callback) {
+            console.log(this.id + ".update");
 
-            update: function (obj, callback) {
-                // startup
-                console.log('URLRedirector - update');
+            this._contextObj = obj;
+            this._resetSubscriptions();
+            this._updateRendering();
 
-                // Release handle on previous object, if any.
-                if (this._handle) {
-                    mx.data.unsubscribe(this._handle);
-                }
+            callback();
+        },
 
-                if (typeof obj === 'string') {
-                    this._contextGuid = obj;
-                    mx.data.get({
-                        guids: [this._contextGuid],
-                        callback: lang.hitch(this, function (objs) {
+        // mxui.widget._WidgetBase.enable is called when the widget should enable editing. Implement to enable editing if widget is input widget.
+        enable: function () {},
 
-                            // Set the object as background.
-                            this._contextObj = objs;
+        // mxui.widget._WidgetBase.enable is called when the widget should disable editing. Implement to disable editing if widget is input widget.
+        disable: function () {},
 
-                            // Load data again.
-                            this._loadData();
+        // mxui.widget._WidgetBase.resize is called when the page"s layout is recalculated. Implement to do sizing calculations. Prefer using CSS instead.
+        resize: function (box) {},
 
-                        })
-                    });
-                } else {
-                    this._contextObj = obj;
-                }
+        // mxui.widget._WidgetBase.uninitialize is called when the widget is destroyed. Implement to do special tear-down work.
+        uninitialize : function() {
+        },
 
-                if (obj === null) {
-                    // Sorry no data no show!
-                    console.log('URLRedirector  - update - No context object!');
-                } else {
-
-                    // Load data
-                    this._loadData();
-                }
-
-                // Execute callback.
-                if(typeof callback !== 'undefined'){
-                    callback();
-                }
-            },
-
-            /**
-             * How the widget re-acts from actions invoked by the Mendix App.
-             */
-            suspend: function () {
-                //TODO, what will happen if the widget is suspended (not visible).
-            },
-
-            resume: function () {
-                //TODO, what will happen if the widget is resumed (set visible).
-            },
-
-            enable: function () {
-                //TODO, what will happen if the widget is enabled (not visible).
-            },
-
-            disable: function () {
-                //TODO, what will happen if the widget is disabled (set visible).
-            },
-
-            unintialize: function () {
-                //TODO, clean up only events
-                if (this._handle) {
-                    mx.data.unsubscribe(this._handle);
-                }
-            },
-
-
-            /**
-             * Interaction widget methods.
-             * ======================
-             */
-            _loadData: function () {
-                var url = null;
-                try {
-                    if (this.URLAttribute !== '' || this.urlprefix !== '')
-                    {
-                        if(this.URLAttribute !=='') {
-                            url = this.urlprefix + this._contextObj.get(this.URLAttribute);
-                        }
-                        else {
-                            url = this.urlprefix;
-                        }
-                        this._redirectTo(url);
+        // Rerender the interface.
+        _updateRendering: function () {
+            var url = null;
+            try {
+                if (this.URLAttribute !== "" || this.urlprefix !== "")
+                {
+                    if(this.URLAttribute !=="") {
+                        url = this.urlprefix + this._contextObj.get(this.URLAttribute);
                     }
                     else {
-                        console.warning('At least prefix property or either URLAttribute property should be configured in widget property configuration');
+                        url = this.urlprefix;
                     }
+                    this._redirectTo(url);
                 }
-                catch (err) {
-                    console.error(this.id +'.loadData: ' + err);
-                }
-
-            },
-
-            _redirectTo : function(url) {
-                if(this.Target === "Page")
-                {
-//                    window.location.href = url;
-                    window.location.replace(url);
-                }
-                else
-                {
-                    window.open(url);
+                else {
+                    console.warning("At least prefix property or either URLAttribute property should be configured in widget property configuration");
                 }
             }
-        });
+            catch (err) {
+                console.error(this.id +".loadData: " + err);
+            }
+        },
+
+        _redirectTo : function(url) {
+            if(this.Target === "Page")
+            {
+                window.location.replace(url);
+            }
+            else
+            {
+                window.open(url);
+            }
+        },
+
+        // Reset subscriptions.
+        _resetSubscriptions: function () {
+            var _objectHandle = null,
+                _attrHandle = null,
+                _validationHandle = null;
+
+            // Release handles on previous object, if any.
+            if (this._handles) {
+                this._handles.forEach(function (handle, i) {
+                    mx.data.unsubscribe(handle);
+                });
+                this._handles = [];
+            }
+
+            // When a mendix object exists create subscribtions. 
+            if (this._contextObj) {
+
+                _objectHandle = this.subscribe({
+                    guid: this._contextObj.getGuid(),
+                    callback: lang.hitch(this, function (guid) {
+                        this._updateRendering();
+                    })
+                });
+
+                this._handles = [_objectHandle];
+            }
+        }
     });
-
-}());
-
+});
+require(["URLRedirector/widget/URLRedirector"], function () {
+    "use strict";
+});
 
