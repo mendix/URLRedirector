@@ -19,26 +19,12 @@
 
 // Required module list. Remove unnecessary modules, you can always get them back from the boilerplate.
 define([
-    "dojo/_base/declare", "mxui/widget/_WidgetBase", "dijit/_TemplatedMixin",
-    "mxui/dom", "dojo/dom", "dojo/query", "dojo/dom-prop", "dojo/dom-geometry", "dojo/dom-class", "dojo/dom-style", "dojo/dom-construct", "dojo/_base/array", "dojo/_base/lang", "dojo/text", "dojo/html", "dojo/_base/html", "dojo/_base/event", "dojo/_base/window",
-    "dojo/text!HelpText/widget/template/HelpText.html"
-], function (declare, _WidgetBase, _TemplatedMixin, dom, dojoDom, domQuery, domProp, domGeom, domClass, domStyle, domConstruct, dojoArray, lang, text, html, page, event, win, widgetTemplate) {
+    "dojo/_base/declare", "mxui/widget/_WidgetBase"
+], function (declare, _WidgetBase) {
     "use strict";
 
     // Declare widget"s prototype.
-    return declare("URLRedirector.widget.URLRedirector", [_WidgetBase, _TemplatedMixin], {
-
-        //IMPLEMENTATION
-        domNode: null,
-        topic : "CustomWidget/HelpText",
-        imgNode : null,
-        handle : null,
-        helpNode : null,
-        helpvisible: false,
-        windowEvt : null,
-
-        // _TemplatedMixin will create our dom node using this HTML template.
-        templateString: widgetTemplate,
+    return declare("URLRedirector.widget.URLRedirector", [_WidgetBase], {
 
         // Internal variables. Non-primitives created in the prototype are shared between all widget instances.
         _handle: null,
@@ -54,8 +40,6 @@ define([
         // dijit._WidgetBase.postCreate is called after constructing the widget. Implement to do extra setup work.
         postCreate: function () {
             console.log(this.id + ".postCreate");
-            this._updateRendering();
-            this._setupEvents();
         },
 
         // mxui.widget._WidgetBase.update is called when context is changed or initialized. Implement to re-render and / or fetch data.
@@ -63,10 +47,27 @@ define([
             console.log(this.id + ".update");
 
             this._contextObj = obj;
-            this._resetSubscriptions();
-            this._updateRendering();
+            if (this._contextObj !== null) {
+                this._updateRendering(callback);
+            } else {
+                callback();
+            }
+        },
 
-            callback();
+        applyContext: function(obj, callback) {
+            if (obj !== null) {
+                mx.data.get({
+                    guids    : [obj.getTrackId()],
+                    callback : function(objs) {
+                        if (objs.length === 1) {
+                            this._contextObj = objs[0];
+                            this._updateRendering(callback);
+                        }
+                    }
+                }, this);
+            } else {
+                callback();
+            }
         },
 
         // mxui.widget._WidgetBase.enable is called when the widget should enable editing. Implement to enable editing if widget is input widget.
@@ -83,29 +84,30 @@ define([
         },
 
         // Rerender the interface.
-        _updateRendering: function () {
+        _updateRendering: function (callback) {
             var url = null;
             try {
                 if (this.URLAttribute !== "" || this.urlprefix !== "")
                 {
                     if(this.URLAttribute !=="") {
                         url = this.urlprefix + this._contextObj.get(this.URLAttribute);
-                    }
-                    else {
+                    } else {
                         url = this.urlprefix;
                     }
-                    this._redirectTo(url);
-                }
-                else {
+                    this._redirectTo(url, callback);
+                } else {
                     console.warning("At least prefix property or either URLAttribute property should be configured in widget property configuration");
+                    callback();
                 }
             }
             catch (err) {
-                console.error(this.id +".loadData: " + err);
+                console.error(this.id +"_updateRendering: " + err);
+                callback();
             }
         },
 
-        _redirectTo : function(url) {
+        _redirectTo : function(url, callback) {
+            callback();
             if(this.Target === "Page")
             {
                 window.location.replace(url);
@@ -113,34 +115,6 @@ define([
             else
             {
                 window.open(url);
-            }
-        },
-
-        // Reset subscriptions.
-        _resetSubscriptions: function () {
-            var _objectHandle = null,
-                _attrHandle = null,
-                _validationHandle = null;
-
-            // Release handles on previous object, if any.
-            if (this._handles) {
-                this._handles.forEach(function (handle, i) {
-                    mx.data.unsubscribe(handle);
-                });
-                this._handles = [];
-            }
-
-            // When a mendix object exists create subscribtions. 
-            if (this._contextObj) {
-
-                _objectHandle = this.subscribe({
-                    guid: this._contextObj.getGuid(),
-                    callback: lang.hitch(this, function (guid) {
-                        this._updateRendering();
-                    })
-                });
-
-                this._handles = [_objectHandle];
             }
         }
     });
