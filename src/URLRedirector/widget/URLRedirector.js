@@ -108,12 +108,11 @@ define([
 
         _redirectTo : function(url, callback) {
             callback();
-            if(this.Target === "Page")
-            {
+            if(this.Target === "Page") {
                 window.location.replace(url);
-            }
-            else
-            {
+            } else if (this.Target == "Top") {
+                window.top.location.replace(url);
+            } else {
                 window.open(url);
             }
         }
