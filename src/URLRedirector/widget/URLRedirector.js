@@ -110,7 +110,7 @@ define([
             callback();
             if(this.Target === "Page") {
                 window.location.replace(url);
-            } else if (this.Target == "Top") {
+            } else if (this.Target === "Top") {
                 window.top.location.replace(url);
             } else {
                 window.open(url);
