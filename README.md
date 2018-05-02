@@ -21,8 +21,7 @@ Redirect to a static url or a URL stored as a value in an object.
 
 Import the widget to your project and add the widget to a dataview on a page. Configure the properties to determine how the widget will behave in your application.
 
-###Properties
-
+### Properties
 
 ##### General
 
@@ -32,3 +31,15 @@ Import the widget to your project and add the widget to a dataview on a page. Co
 * *URL Attribute* - Attribute containing a URL value to redirect to. (E.g. http://www.mendix.com, you could also combine with the prefix value and add the value '/learn' to it)
 * *Target* - Window where the redirect URL should be opened 
 
+## Troubleshooting
+
+URLRedirector may not work on iOS in Phonegap, due to security policies. This issue, and the fix, was reported [here](https://github.com/mendix/URLRedirector/issues/2):
+
+Add this to your ``config.xml``:
+
+```xml
+<gap:plugin name="cordova-plugin-whitelist" source="npm" version="1.3.2" />
+<allow-navigation href="https://someurl.mendixcloud.com/*" />
+```
+
+Make sure the HREF points to your deployment url
