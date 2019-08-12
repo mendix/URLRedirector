@@ -41,7 +41,8 @@ IlBTMrB9VgsAgP8BON24AjtZfcoAAAAASUVORK5CYII=</icon>
             <category>Data source</category>
             <description>In what type of webpage must the URL be open.</description>
             <enumerationValues>
-                <enumerationValue key="Page">Same browser page</enumerationValue>
+                <enumerationValue key="Page">Same browser page, same frame</enumerationValue>
+                <enumerationValue key="Top">Same browser page, full body</enumerationValue>
                 <enumerationValue key="Blank">New browser page</enumerationValue>
             </enumerationValues>
         </property>
