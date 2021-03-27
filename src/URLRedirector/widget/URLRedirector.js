@@ -112,6 +112,10 @@ define([
             {
                 window.location.replace(url);
             }
+            else if (this.Target === "Top") 
+            {
+                window.top.location.replace(url);
+            }
             else
             {
                 window.open(url);
